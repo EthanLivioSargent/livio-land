@@ -1,21 +1,30 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 
+// Stats query the live DB on every request — without force-dynamic, Next.js
+// serves a cached homepage that lies about the listing count after admins
+// approve/reject/demote anything.
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
+  // Public stats — only count APPROVED listings, not pending drafts.
+  // (Pending listings are hidden from browse pages, so the count + MW totals
+  //  on the homepage need to match what the public can actually see.)
+  const publicWhere = { status: "available", approvalStatus: "approved" } as const;
   const [dcCount, landCount, totalMW] = await Promise.all([
-    prisma.dataCenterListing.count({ where: { status: "available" } }),
-    prisma.poweredLandListing.count({ where: { status: "available" } }),
+    prisma.dataCenterListing.count({ where: publicWhere }),
+    prisma.poweredLandListing.count({ where: publicWhere }),
     prisma.dataCenterListing
       .aggregate({
         _sum: { availableMW: true },
-        where: { status: "available" },
+        where: publicWhere,
       })
       .then((r) => r._sum.availableMW || 0),
   ]);
   const landMW = await prisma.poweredLandListing
     .aggregate({
       _sum: { availableMW: true },
-      where: { status: "available" },
+      where: publicWhere,
     })
     .then((r) => r._sum.availableMW || 0);
 
