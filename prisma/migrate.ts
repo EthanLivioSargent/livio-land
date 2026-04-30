@@ -9,14 +9,24 @@
  *   with an empty catalog instead of fake stand-in data.
  */
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+// Admin emails — these accounts always have isAdmin=true after a deploy.
 const ADMIN_EMAILS = [
   "ethan@golivio.com",
   "navneet@golivio.com",
   "nav@golivio.com",
 ];
+
+// Bootstrap password for the primary admin account. Idempotently reset on
+// every deploy so we always know how to log in. Change this and redeploy
+// to rotate.
+const PRIMARY_ADMIN_EMAIL = "ethan@golivio.com";
+const PRIMARY_ADMIN_PASSWORD = "GoLivio2026$";
+const PRIMARY_ADMIN_NAME = "Ethan Sargent";
+const PRIMARY_ADMIN_COMPANY = "Livio";
 
 // Anything owned by these accounts is demo / seeded data and should be removed.
 // The accounts themselves stay (used for QA), but their listings + Q&A go away.
@@ -70,8 +80,34 @@ async function main() {
     }
   }
 
-  // 2. Promote Ethan + Nav to admins (idempotent — only runs UPDATE if isAdmin=false).
+  // 2. Ensure the primary admin account exists with the bootstrap password.
+  //    Force-reset password every deploy so we always have a working admin login,
+  //    and grant MNDA-signed status so admins skip the gate.
+  {
+    const passwordHash = await bcrypt.hash(PRIMARY_ADMIN_PASSWORD, 10);
+    await prisma.user.upsert({
+      where: { email: PRIMARY_ADMIN_EMAIL },
+      update: {
+        passwordHash,
+        isAdmin: true,
+        name: PRIMARY_ADMIN_NAME,
+        company: PRIMARY_ADMIN_COMPANY,
+      },
+      create: {
+        email: PRIMARY_ADMIN_EMAIL,
+        passwordHash,
+        name: PRIMARY_ADMIN_NAME,
+        company: PRIMARY_ADMIN_COMPANY,
+        role: "both",
+        isAdmin: true,
+      },
+    });
+    console.log(`  ✓ Bootstrapped primary admin ${PRIMARY_ADMIN_EMAIL} with fresh password hash`);
+  }
+
+  // 3. Promote any other admin emails (idempotent — only runs UPDATE if isAdmin=false).
   for (const email of ADMIN_EMAILS) {
+    if (email === PRIMARY_ADMIN_EMAIL) continue; // already handled above
     const user = await prisma.user.findUnique({
       where: { email },
       select: { id: true, isAdmin: true },
