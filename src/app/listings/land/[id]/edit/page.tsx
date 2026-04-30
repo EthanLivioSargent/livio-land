@@ -71,6 +71,23 @@ export default async function EditLandListingPage({
           description makes review faster.
         </div>
       )}
+
+      {/* Photo upload moved to the TOP of the page so suppliers see it first.
+          Sits outside the main <ListingForm> because PhotoUpload manages its
+          own uploads via a separate server action — uploads happen as files
+          are dropped, independent of the "Save changes" submission. */}
+      <div className="mt-8 rounded-lg border border-slate-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-slate-900">Site photos &amp; documents</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Upload photos of the parcel, drone footage stills, topo surveys, water-rights
+          documentation, or your utility LOI. Off-takers see these on the listing once approved.
+          Files upload immediately when you drop them — no need to click Save first.
+        </p>
+        <div className="mt-4">
+          <PhotoUpload type="land" listingId={listing.id} photos={photos} canEdit={true} />
+        </div>
+      </div>
+
       <div className="mt-8">
         <ListingForm action={update} submitLabel="Save changes">
           <FormSection title="Overview">
@@ -257,17 +274,6 @@ export default async function EditLandListingPage({
             </div>
           </FormSection>
         </ListingForm>
-      </div>
-
-      <div className="mt-10 rounded-lg border border-slate-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-slate-900">Site photos &amp; documents</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Upload photos of the parcel, drone footage stills, topo surveys, water-rights
-          documentation, or your utility LOI. Off-takers see these on the listing once approved.
-        </p>
-        <div className="mt-4">
-          <PhotoUpload type="land" listingId={listing.id} photos={photos} canEdit={true} />
-        </div>
       </div>
     </div>
   );

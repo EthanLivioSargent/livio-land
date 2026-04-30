@@ -71,6 +71,20 @@ export default async function EditDcListingPage({
           description makes review faster.
         </div>
       )}
+
+      {/* Photo upload moved to the TOP of the page so suppliers see it first. */}
+      <div className="mt-8 rounded-lg border border-slate-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-slate-900">Facility photos &amp; documents</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Upload facility photos, drone shots, network topology diagrams, certifications, or
+          one-pagers. Off-takers see these on the listing once approved. Files upload immediately
+          when you drop them — no need to click Save first.
+        </p>
+        <div className="mt-4">
+          <PhotoUpload type="dc" listingId={listing.id} photos={photos} canEdit={true} />
+        </div>
+      </div>
+
       <div className="mt-8">
         <ListingForm action={update} submitLabel="Save changes">
           <FormSection title="Overview">
@@ -228,17 +242,6 @@ export default async function EditDcListingPage({
             />
           </FormSection>
         </ListingForm>
-      </div>
-
-      <div className="mt-10 rounded-lg border border-slate-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-slate-900">Site photos &amp; documents</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Off-takers will see these on the listing page once it&rsquo;s approved. Drone shots,
-          substation diagrams, and utility LOIs (PDF) are all welcome.
-        </p>
-        <div className="mt-4">
-          <PhotoUpload type="dc" listingId={listing.id} photos={photos} canEdit={true} />
-        </div>
       </div>
     </div>
   );
