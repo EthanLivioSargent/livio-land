@@ -180,13 +180,3 @@ export async function removeProfilePhoto(): Promise<ProfileResult> {
   return { ok: true, message: "Profile photo removed." };
 }
 
-/** Server-side: presigned URL for the user's profile photo, or null if none. */
-export async function getProfilePhotoUrl(profilePhotoKey: string | null): Promise<string | null> {
-  if (!profilePhotoKey) return null;
-  if (!isR2Configured()) return null;
-  try {
-    return await getR2DownloadUrl(profilePhotoKey);
-  } catch {
-    return null;
-  }
-}

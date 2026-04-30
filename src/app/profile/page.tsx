@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
-import { getProfilePhotoUrl } from "@/lib/profile-actions";
+import { getProfilePhotoUrl } from "@/lib/r2-helpers";
 import { ProfileForm } from "./profile-form";
 
 export const dynamic = "force-dynamic";
