@@ -118,16 +118,14 @@ export default async function EditLandListingPage({
             />
           </FormSection>
 
+          {/* Location is intentionally limited to State + County. Off-takers don't
+              need a street address, ZIP, or lat/long to evaluate a parcel — and
+              not exposing the exact address keeps the supplier in control of
+              when (and to whom) the precise location is shared. */}
           <FormSection title="Site Location">
-            <FormField name="streetAddress" label="Street address (private)" defaultValue={listing.streetAddress ?? ""} />
             <div className="grid grid-cols-2 gap-4">
-              <FormField name="county" label="County" defaultValue={listing.county ?? ""} />
               <FormField name="state" label="State" defaultValue={listing.state ?? ""} />
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <FormField name="postalCode" label="ZIP" defaultValue={listing.postalCode ?? ""} />
-              <FormField name="latitude" label="Latitude" type="number" step="0.000001" defaultValue={listing.latitude != null ? String(listing.latitude) : ""} />
-              <FormField name="longitude" label="Longitude" type="number" step="0.000001" defaultValue={listing.longitude != null ? String(listing.longitude) : ""} />
+              <FormField name="county" label="County (optional)" defaultValue={listing.county ?? ""} />
             </div>
           </FormSection>
 
