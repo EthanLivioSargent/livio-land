@@ -182,6 +182,84 @@ export async function deleteLandListing(id: string) {
   redirect("/listings/land");
 }
 
+// "Describe your site" → AI extraction.
+// Supplier pastes a free-text description; Claude Haiku 4.5 pulls structured
+// fields (location, MW, acres, PPA status, etc.) and we overwrite ONLY the
+// blank fields on the draft. Anything the supplier already filled in stays
+// untouched. The supplier reviews the result before clicking Save.
+export async function autoFillLandListingFromDescription(
+  id: string,
+  formData: FormData,
+): Promise<{ ok: true; filled: string[] } | { ok: false; error: string }> {
+  const { extractListingFromText } = await import("./ai-extract");
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "You must be signed in." };
+  const listing = await prisma.poweredLandListing.findUnique({ where: { id } });
+  if (!listing) return { ok: false, error: "Listing not found" };
+  if (listing.ownerId !== user.id && !user.isAdmin) {
+    return { ok: false, error: "Only the listing owner or an admin can edit this listing." };
+  }
+  const description = String(formData.get("description") || "").trim();
+  if (description.length < 20) {
+    return { ok: false, error: "Add at least a couple of sentences before auto-filling." };
+  }
+
+  const extracted = await extractListingFromText(description);
+
+  // Build an update payload that only fills BLANK fields. We never overwrite
+  // values the supplier already typed in — this lets them refine the draft
+  // by editing the description and re-running extraction without losing work.
+  const data: Record<string, string | number | Date | null> = {};
+  const filled: string[] = [];
+  const setIfBlank = (
+    key: keyof typeof listing,
+    value: string | number | Date | null | undefined,
+  ) => {
+    if (value === undefined || value === null) return;
+    const current = (listing as Record<string, unknown>)[key];
+    const isBlank =
+      current === null ||
+      current === undefined ||
+      current === "" ||
+      current === 0 ||
+      current === "(Draft listing — replace this title)";
+    if (isBlank) {
+      data[key as string] = value as string | number | Date;
+      filled.push(key as string);
+    }
+  };
+
+  setIfBlank("title", extracted.title);
+  setIfBlank("description", extracted.description ?? description);
+  setIfBlank("location", extracted.location);
+  setIfBlank("state", extracted.state);
+  setIfBlank("county", extracted.county);
+  setIfBlank("country", extracted.country ?? "USA");
+  setIfBlank("acres", extracted.acres);
+  setIfBlank("availableMW", extracted.availableMW);
+  setIfBlank("utilityProvider", extracted.utilityProvider);
+  setIfBlank("substationDistanceMiles", extracted.substationDistanceMiles);
+  setIfBlank("ppaStatus", extracted.ppaStatus);
+  setIfBlank("ppaPricePerMWh", extracted.ppaPricePerMWh);
+  setIfBlank("interconnectionStage", extracted.interconnectionStage);
+  if (extracted.expectedEnergization) {
+    const d = new Date(extracted.expectedEnergization);
+    if (!isNaN(d.getTime())) setIfBlank("expectedEnergization", d);
+  }
+  setIfBlank("waterAvailable", extracted.waterAvailable);
+  setIfBlank("waterSourceNotes", extracted.waterSourceNotes);
+  setIfBlank("fiberAvailable", extracted.fiberAvailable);
+  setIfBlank("zoning", extracted.zoning);
+  setIfBlank("askingPrice", extracted.askingPrice);
+  setIfBlank("pricingModel", extracted.pricingModel);
+
+  if (Object.keys(data).length > 0) {
+    await prisma.poweredLandListing.update({ where: { id }, data });
+  }
+  revalidatePath(`/listings/land/${id}/edit`);
+  return { ok: true, filled };
+}
+
 // "Post listing" — owner explicit submission for admin review.
 // The listing already enters approvalStatus="pending" the moment it's saved,
 // so this action mainly (a) bumps updatedAt so admins see freshly-submitted

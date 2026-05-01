@@ -6,6 +6,7 @@ import { updateLandListing } from "@/lib/listing-actions";
 import { ListingForm, FormField, FormSection } from "@/components/listing-form";
 import { PhotoUpload } from "@/components/photo-upload";
 import { getListingPhotos } from "@/lib/photo-actions";
+import { DescribeSite } from "@/components/describe-site";
 
 export default async function EditLandListingPage({
   params,
@@ -72,11 +73,21 @@ export default async function EditLandListingPage({
         </div>
       )}
 
-      {/* Photo upload moved to the TOP of the page so suppliers see it first.
-          Sits outside the main <ListingForm> because PhotoUpload manages its
-          own uploads via a separate server action — uploads happen as files
-          are dropped, independent of the "Save changes" submission. */}
-      <div className="mt-8 rounded-lg border border-slate-200 bg-white p-6">
+      {/* AI-assisted auto-fill — supplier types a free-text description and
+          Claude Haiku 4.5 extracts structured fields into the questionnaire
+          below. Only blank fields are filled, so iterative refinement works. */}
+      <div className="mt-8">
+        <DescribeSite
+          listingId={listing.id}
+          initialValue={listing.description ?? ""}
+        />
+      </div>
+
+      {/* Photo upload sits high on the page so suppliers see it first. Lives
+          outside the main <ListingForm> because PhotoUpload manages its own
+          uploads via a separate server action — uploads happen as files are
+          dropped, independent of the "Save changes" submission. */}
+      <div className="mt-6 rounded-lg border border-slate-200 bg-white p-6">
         <h2 className="text-lg font-semibold text-slate-900">Site photos &amp; documents</h2>
         <p className="mt-1 text-sm text-slate-500">
           Upload photos of the parcel, drone footage stills, topo surveys, water-rights

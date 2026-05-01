@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
-    "start": "prisma db push --accept-data-loss && tsx prisma/migrate.ts && next start",
+    "build": "prisma generate && prisma db push --accept-data-loss && tsx prisma/migrate.ts && next build",
+    "start": "next start",
     "lint": "next lint",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
@@ -13,6 +13,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
     "@aws-sdk/client-s3": "^3.667.0",
     "@aws-sdk/s3-request-presigner": "^3.667.0",
     "@prisma/client": "^5.22.0",
