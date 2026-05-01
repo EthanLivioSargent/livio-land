@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swa
 import { getCurrentUser } from "@/lib/session";
 import { signout } from "@/lib/auth-actions";
 import { prisma } from "@/lib/db";
-import { getProfilePhotoUrl } from "@/lib/profile-actions";
+import { getProfilePhotoUrl } from "@/lib/r2-helpers";
 
 export const metadata: Metadata = {
   title: "Livio Land — The marketplace for powered land",
