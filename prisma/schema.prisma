@@ -15,7 +15,7 @@ model User {
   company         String?
   role            String   @default("both") // "supplier" | "offtaker" | "both"
   isAdmin         Boolean  @default(false)
-  profilePhotoKey String?  // R2 key for profile picture, e.g. "users/{userId}/profile-{cuid}.jpg"
+  profilePhotoKey String?  // R2 key for profile picture
   createdAt       DateTime @default(now())
 
   // Latest MNDA signature this user has on file (denormalised for fast checks)
@@ -31,6 +31,11 @@ model User {
   mndaSignatures   MndaSignature[]
   approvedDc       DataCenterListing[]  @relation("ApprovedDcListings")
   approvedLand     PoweredLandListing[] @relation("ApprovedLandListings")
+
+  // Privacy / invite system: invites this user has SENT (as listing owner)
+  // and invites that have RESOLVED to this user (matched by email at accept).
+  invitesSent     ListingInvite[] @relation("InvitesSent")
+  invitesAccepted ListingInvite[] @relation("InvitesAccepted")
 }
 
 model DataCenterListing {
@@ -113,6 +118,18 @@ model PoweredLandListing {
   status              String   @default("available")
   description         String?
 
+  // Privacy: "private" (default — only owner + invited emails can view)
+  // or "public" (visible in browse to anyone, gated only by admin approval).
+  // Defaults to "private" so suppliers' deal info isn't leaked by accident.
+  visibility        String   @default("private") // "private" | "public"
+
+  // Per-field privacy: names of fields the owner has marked as hidden from
+  // public viewers. Owner, admins, and MNDA-signed off-takers who've messaged
+  // the owner still see them. Field names match Prisma column names so the
+  // detail page can mask them generically.
+  // e.g. ["askingPrice", "ppaPricePerMWh", "utilityProvider"]
+  privateFields     String[] @default([])
+
   // Admin approval workflow
   approvalStatus    String   @default("pending") // "pending" | "approved" | "rejected"
   approvedAt        DateTime?
@@ -126,10 +143,51 @@ model PoweredLandListing {
   questions           Question[]
   messages            Message[]
   photos              ListingPhoto[]
+  invites             ListingInvite[]
 
   @@index([location])
   @@index([availableMW])
   @@index([approvalStatus])
+  @@index([visibility])
+}
+
+// Per-listing invite. Owner adds an email; we generate a token, send a
+// link, and the recipient gets read access once they sign in / sign up
+// with that email. Revocable at any time by the owner.
+model ListingInvite {
+  id            String   @id @default(cuid())
+  token         String   @unique @default(cuid())
+  email         String   // Lower-cased on insert; matched against User.email at accept time.
+  invitedById   String
+  invitedBy     User     @relation("InvitesSent", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  // Currently land-only. DC kept off the schema so we don't accidentally
+  // grant access to retired DC listings. Add a `dcListingId` here later
+  // if/when DC marketplace comes back.
+  landListingId String
+  landListing   PoweredLandListing @relation(fields: [landListingId], references: [id], onDelete: Cascade)
+
+  // "pending" — sent, not yet accepted. "accepted" — recipient signed in
+  // and gained access. "revoked" — owner pulled access. Status is also
+  // gated by `revokedAt` for clarity in the UI.
+  status        String   @default("pending") // "pending" | "accepted" | "revoked"
+  acceptedAt    DateTime?
+  acceptedById  String?
+  acceptedBy    User?    @relation("InvitesAccepted", fields: [acceptedById], references: [id], onDelete: SetNull)
+  revokedAt     DateTime?
+
+  // Optional note shown in the invite email (e.g. "Hi Acme — sharing our
+  // Taylor County site for your AI factory build-out.").
+  message       String?
+
+  createdAt     DateTime @default(now())
+
+  @@index([landListingId])
+  @@index([email])
+  @@index([acceptedById])
+  // One pending invite per (listing, email). Revoked invites can be re-sent
+  // because their status differs.
+  @@unique([landListingId, email, status])
 }
 
 model Question {

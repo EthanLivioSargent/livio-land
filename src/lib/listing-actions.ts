@@ -260,6 +260,37 @@ export async function autoFillLandListingFromDescription(
   return { ok: true, filled };
 }
 
+// Toggle whether a single land-listing field is hidden from public viewers.
+// Called by the eye-with-slash button next to each form field. Owner-only.
+export async function toggleLandFieldPrivacy(
+  id: string,
+  fieldName: string,
+): Promise<{ ok: true; private: boolean } | { ok: false; error: string }> {
+  const { isToggleableField } = await import("./listing-privacy");
+  if (!isToggleableField(fieldName)) {
+    return { ok: false, error: "Field is not togglable." };
+  }
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sign in first." };
+  const listing = await prisma.poweredLandListing.findUnique({ where: { id } });
+  if (!listing) return { ok: false, error: "Listing not found" };
+  if (listing.ownerId !== user.id && !user.isAdmin) {
+    return { ok: false, error: "Only the owner or an admin can change privacy." };
+  }
+  const current = listing.privateFields || [];
+  const wasPrivate = current.includes(fieldName);
+  const next = wasPrivate
+    ? current.filter((f) => f !== fieldName)
+    : [...current, fieldName];
+  await prisma.poweredLandListing.update({
+    where: { id },
+    data: { privateFields: next },
+  });
+  revalidatePath(`/listings/land/${id}`);
+  revalidatePath(`/listings/land/${id}/edit`);
+  return { ok: true, private: !wasPrivate };
+}
+
 // "Post listing" — owner explicit submission for admin review.
 // The listing already enters approvalStatus="pending" the moment it's saved,
 // so this action mainly (a) bumps updatedAt so admins see freshly-submitted

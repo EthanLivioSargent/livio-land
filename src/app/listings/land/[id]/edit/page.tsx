@@ -7,6 +7,8 @@ import { ListingForm, FormField, FormSection } from "@/components/listing-form";
 import { PhotoUpload } from "@/components/photo-upload";
 import { getListingPhotos } from "@/lib/photo-actions";
 import { DescribeSite } from "@/components/describe-site";
+import { PrivacyToggle } from "@/components/privacy-toggle";
+import { PRIVACY_TOGGLEABLE_FIELDS } from "@/lib/listing-privacy";
 
 export default async function EditLandListingPage({
   params,
@@ -99,7 +101,50 @@ export default async function EditLandListingPage({
         </div>
       </div>
 
-      <div className="mt-8">
+      {/* Privacy controls — owner picks which fields are hidden from public
+          off-takers. Eye = visible. Eye-with-slash = hidden. Hidden fields
+          render as "🔒 Hidden — message owner" on the public listing page;
+          owner, admins, and (future) MNDA-signed off-takers who've already
+          messaged still see the real value. */}
+      <div className="mt-6 rounded-lg border border-slate-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-slate-900">Privacy controls</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Click the eye icon next to a field to hide it from public off-takers.
+          Off-takers who message you (under signed MNDA) get full visibility.{" "}
+          <Link
+            href={`/listings/land/${listing.id}?preview=1`}
+            className="font-medium text-brand-600 hover:underline"
+          >
+            Preview as off-taker →
+          </Link>
+        </p>
+        <div className="mt-4 grid gap-2 grid-cols-1 sm:grid-cols-2">
+          {PRIVACY_TOGGLEABLE_FIELDS.map((field) => (
+            <div
+              key={field}
+              className="flex items-center justify-between rounded-md border border-slate-100 bg-slate-50 px-3 py-2 text-sm"
+            >
+              <span className="text-slate-700">{field}</span>
+              <PrivacyToggle
+                listingId={listing.id}
+                fieldName={field}
+                initialPrivate={(listing.privateFields || []).includes(field)}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-6 flex justify-end gap-2">
+        <Link
+          href={`/listings/land/${listing.id}?preview=1`}
+          className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-400"
+        >
+          Preview listing →
+        </Link>
+      </div>
+
+      <div className="mt-4">
         <ListingForm action={update} submitLabel="Save changes">
           <FormSection title="Overview">
             <FormField
