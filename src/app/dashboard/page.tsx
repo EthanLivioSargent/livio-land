@@ -11,7 +11,7 @@ export default async function DashboardPage() {
   if (!user) redirect("/auth/signin");
 
   // Land-only marketplace: dropped the DC findMany queries entirely.
-  const [landListings, questionsAsked, pendingLand] = await Promise.all([
+  const [landListings, questionsAsked, pendingLand, sharedWithMe] = await Promise.all([
     prisma.poweredLandListing.findMany({
       where: { ownerId: user.id },
       orderBy: { createdAt: "desc" },
@@ -35,8 +35,32 @@ export default async function DashboardPage() {
           include: { owner: { select: { name: true, email: true, company: true } } },
         })
       : Promise.resolve([] as Array<never>),
+    // Listings the user has been invited to — pulled via ListingInvite so a
+    // single index hit handles both pending and accepted.
+    prisma.listingInvite.findMany({
+      where: { email: user.email.toLowerCase(), status: { not: "revoked" } },
+      orderBy: { createdAt: "desc" },
+      include: {
+        landListing: {
+          select: {
+            id: true,
+            title: true,
+            location: true,
+            availableMW: true,
+            acres: true,
+            owner: { select: { name: true, company: true } },
+          },
+        },
+      },
+    }),
   ]);
   const totalPending = pendingLand.length;
+
+  // First-time user: never listed land, never asked a question. Show a clear
+  // two-path onboarding card so they immediately know what to do — buy
+  // (browse sites) or sell (list land).
+  const isFirstTime =
+    landListings.length === 0 && questionsAsked.length === 0 && !user.isAdmin;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10">
@@ -56,6 +80,42 @@ export default async function DashboardPage() {
           + List land
         </Link>
       </div>
+
+      {isFirstTime && (
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          <Link
+            href="/listings/land"
+            className="group rounded-2xl border-2 border-brand-200 bg-brand-50 p-6 hover:border-brand-400 transition"
+          >
+            <div className="text-xs font-semibold uppercase tracking-wide text-brand-700">
+              Sourcing for an AI data center
+            </div>
+            <div className="mt-2 text-xl font-bold text-slate-900 group-hover:text-brand-700">
+              Browse powered land →
+            </div>
+            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+              Filter by MW, state, PPA status, interconnection stage. Vetted,
+              MNDA-protected sites ready to underwrite.
+            </p>
+          </Link>
+          <Link
+            href="/listings/new/land"
+            className="group rounded-2xl border-2 border-emerald-200 bg-emerald-50/50 p-6 hover:border-emerald-400 transition"
+          >
+            <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+              Have land to sell
+            </div>
+            <div className="mt-2 text-xl font-bold text-slate-900 group-hover:text-emerald-700">
+              List your site →
+            </div>
+            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+              Paste a paragraph describing your site and we auto-fill the
+              questionnaire with AI. Photos, MW, PPA, interconnection — done in
+              minutes.
+            </p>
+          </Link>
+        </div>
+      )}
 
       {/* Admin-only: pending-review queue rendered inline on the dashboard so
           admins can approve/reject without navigating to /admin. Hidden from
@@ -152,6 +212,47 @@ export default async function DashboardPage() {
           ))}
         </div>
       </section>
+
+      {sharedWithMe.length > 0 && (
+        <section className="mt-10">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-slate-900">
+              Shared with you ({sharedWithMe.length})
+            </h2>
+            <span className="text-xs text-slate-500">Private listings owners invited you to view</span>
+          </div>
+          <div className="mt-4 grid gap-3">
+            {sharedWithMe.map((inv) => (
+              <Link
+                key={inv.id}
+                href={`/listings/land/${inv.landListing.id}`}
+                className="rounded-xl border border-slate-200 bg-white p-4 hover:border-violet-500 transition"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-violet-800">
+                        Shared
+                      </span>
+                      <div className="font-medium text-slate-900">{inv.landListing.title}</div>
+                    </div>
+                    <div className="mt-1 text-sm text-slate-600">
+                      {inv.landListing.location} • {inv.landListing.availableMW} MW •{" "}
+                      {inv.landListing.acres} acres
+                    </div>
+                  </div>
+                  <div className="text-right text-xs text-slate-500">
+                    <div>From</div>
+                    <div className="text-slate-900">
+                      {inv.landListing.owner.company || inv.landListing.owner.name}
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {questionsAsked.length > 0 && (
         <section className="mt-10">

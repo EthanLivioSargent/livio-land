@@ -225,6 +225,37 @@ export default async function LandListingDetailPage({
           />
         </div>
 
+        {/* "Run analysis" CTA — deep-links into Livio Grid (the engineering /
+            underwriting product) with this site's MW + location pre-filled,
+            so an AI-data-center buyer can go from "interesting parcel" to
+            "fully engineered + IC-ready CapEx model" in 4 hours. */}
+        <div className="mt-6 rounded-lg border-2 border-brand-200 bg-brand-50 px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-brand-900">
+                Engineer this site in 4 hours with Livio Grid
+              </div>
+              <div className="mt-1 text-xs text-brand-800">
+                Auto-generates SLDs, floor plans, CapEx waterfall, IRR/NPV, equipment
+                schedule, and a photoreal 3D walkthrough — keyed off this site's
+                {" "}{listing.availableMW} MW and {listing.location} location.
+              </div>
+            </div>
+            <Link
+              href={`https://grid.golivio.com/?mw=${encodeURIComponent(
+                String(listing.availableMW),
+              )}&location=${encodeURIComponent(
+                `${listing.location}, ${listing.state ?? ""} ${listing.country}`.trim(),
+              )}&source=livio-land&listingId=${encodeURIComponent(listing.id)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+            >
+              Run analysis →
+            </Link>
+          </div>
+        </div>
+
         {(photos.length > 0 || isOwner) && (
           <div className="mt-6 border-t border-slate-200 pt-6">
             <h2 className="font-semibold text-slate-900">Site photos &amp; documents</h2>

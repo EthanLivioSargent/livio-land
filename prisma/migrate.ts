@@ -158,24 +158,227 @@ async function main() {
     }
   }
 
-  // 3. Delete every listing owned by the demo seed accounts. Cascade handles
-  //    Q&A, photos, messages on the listings. Idempotent — runs every deploy
-  //    but only does work when there's something to delete.
-  const demoUsers = await prisma.user.findMany({
-    where: { email: { in: DEMO_SUPPLIER_EMAILS } },
-    select: { id: true },
-  });
-  if (demoUsers.length > 0) {
-    const ownerIds = demoUsers.map((u) => u.id);
-    const deletedLand = await prisma.poweredLandListing.deleteMany({
-      where: { ownerId: { in: ownerIds } },
-    });
-    if (deletedLand.count > 0) {
-      console.log(`  ✓ Removed ${deletedLand.count} demo land listings`);
-    }
-  }
+  // 3. Seed realistic demo land listings so /listings/land has supply for
+  //    AI-data-center buyers to browse. Each demo listing is approved, public
+  //    visibility, and owned by one of the demo seed accounts. Idempotent —
+  //    we re-create only the ones missing by exact title match.
+  await seedDemoLandListings();
 
   console.log("✓ Migrations complete");
+}
+
+// Demo land listings seeded on every deploy (idempotent — won't recreate
+// ones that already exist). Lets AI data center buyers see real-looking
+// supply on /listings/land instead of an empty marketplace. Owned by demo
+// seed accounts so admins can identify and prune them later if needed.
+const DEMO_LAND_LISTINGS = [
+  {
+    title: "240 acres · Pinal County, AZ · 75 MW · LGIA executed",
+    location: "Casa Grande",
+    state: "AZ",
+    county: "Pinal",
+    acres: 240,
+    availableMW: 75,
+    utilityProvider: "Arizona Public Service (APS)",
+    substationDistanceMiles: 1.8,
+    ppaStatus: "signed",
+    ppaPricePerMWh: 42,
+    interconnectionStage: "LGIA",
+    waterAvailable: "yes",
+    fiberAvailable: "yes",
+    zoning: "Light industrial",
+    askingPrice: 7_500_000,
+    pricingModel: "sale",
+    description:
+      "Utility-ready parcel near Casa Grande with signed APS PPA at $42/MWh and LGIA executed in Q1. Substation is 1.8 miles east of the site boundary. Light industrial zoning, fiber on site, no water restrictions. Open to outright sale or JV with off-taker.",
+    ownerEmail: DEMO_SUPPLIER_EMAILS[0],
+  },
+  {
+    title: "320 acres · Tom Green County, TX · 100 MW · ERCOT West",
+    location: "San Angelo",
+    state: "TX",
+    county: "Tom Green",
+    acres: 320,
+    availableMW: 100,
+    utilityProvider: "Oncor / ERCOT West",
+    substationDistanceMiles: 0.6,
+    ppaStatus: "signed",
+    ppaPricePerMWh: 38,
+    interconnectionStage: "LGIA",
+    waterAvailable: "yes",
+    waterSourceNotes: "Water rights for 800 acre-feet/year",
+    fiberAvailable: "yes",
+    zoning: "Heavy industrial",
+    askingPrice: 9_000_000,
+    pricingModel: "sale",
+    description:
+      "320-acre parcel in ERCOT West with signed PPA at $38/MWh and 100 MW deliverable today. LGIA executed Q1 2026. Heavy-industrial zoning with municipal water rights for 800 acre-feet/year and on-site fiber. Open to long-term ground lease.",
+    ownerEmail: DEMO_SUPPLIER_EMAILS[1],
+  },
+  {
+    title: "480 acres · Loudoun County, VA · 200 MW · PJM/Dominion",
+    location: "Leesburg",
+    state: "VA",
+    county: "Loudoun",
+    acres: 480,
+    availableMW: 200,
+    utilityProvider: "Dominion Energy / PJM",
+    substationDistanceMiles: 2.4,
+    ppaStatus: "in-negotiation",
+    ppaPricePerMWh: 52,
+    interconnectionStage: "facility-study",
+    waterAvailable: "limited",
+    fiberAvailable: "yes",
+    zoning: "Data center overlay",
+    askingPrice: 32_000_000,
+    pricingModel: "sale",
+    description:
+      "Strategic 480-acre Loudoun County parcel in PJM with facility-study complete. PPA negotiation in progress at ~$52/MWh. Site has data-center overlay zoning, multiple fiber providers, and limited but viable water access. Two off-takers under NDA.",
+    ownerEmail: DEMO_SUPPLIER_EMAILS[2],
+  },
+  {
+    title: "180 acres · Sweetwater County, WY · 60 MW · PacifiCorp",
+    location: "Rock Springs",
+    state: "WY",
+    county: "Sweetwater",
+    acres: 180,
+    availableMW: 60,
+    utilityProvider: "PacifiCorp",
+    substationDistanceMiles: 3.2,
+    ppaStatus: "available",
+    ppaPricePerMWh: 34,
+    interconnectionStage: "facility-study",
+    waterAvailable: "yes",
+    fiberAvailable: "near",
+    zoning: "Industrial",
+    askingPrice: 4_200_000,
+    pricingModel: "sale",
+    description:
+      "Cold-climate site in Sweetwater County, WY — ideal for high-density AI compute with low cooling cost. PacifiCorp service area, facility study in progress, PPA available at indicative $34/MWh. Fiber 1.5 miles from site, water from Green River Basin allocations.",
+    ownerEmail: DEMO_SUPPLIER_EMAILS[0],
+  },
+  {
+    title: "160 acres · Fayette County, IA · 50 MW · MISO",
+    location: "Oelwein",
+    state: "IA",
+    county: "Fayette",
+    acres: 160,
+    availableMW: 50,
+    utilityProvider: "Alliant Energy / MISO",
+    substationDistanceMiles: 1.1,
+    ppaStatus: "in-negotiation",
+    ppaPricePerMWh: 36,
+    interconnectionStage: "study",
+    waterAvailable: "yes",
+    fiberAvailable: "yes",
+    zoning: "Agricultural (rezoning supported by county)",
+    askingPrice: 2_400_000,
+    pricingModel: "sale",
+    description:
+      "Greenfield site in eastern Iowa MISO. Substation 1.1 miles away, study underway, PPA in negotiation. County board has indicated support for rezoning to industrial. Fiber on site. Excellent fit for 30–50 MW deployment.",
+    ownerEmail: DEMO_SUPPLIER_EMAILS[1],
+  },
+  {
+    title: "360 acres · Yakima County, WA · 120 MW · BPA",
+    location: "Sunnyside",
+    state: "WA",
+    county: "Yakima",
+    acres: 360,
+    availableMW: 120,
+    utilityProvider: "Bonneville Power Administration",
+    substationDistanceMiles: 0.9,
+    ppaStatus: "signed",
+    ppaPricePerMWh: 35,
+    interconnectionStage: "energized",
+    waterAvailable: "yes",
+    fiberAvailable: "yes",
+    zoning: "Industrial",
+    askingPrice: 14_000_000,
+    pricingModel: "sale",
+    description:
+      "Energized 360-acre site in BPA service territory, signed PPA at $35/MWh. Existing 120 MW interconnection — operator can begin construction immediately. On-site fiber and Yakima Basin water rights included. Available for sale or 30+ year ground lease.",
+    ownerEmail: DEMO_SUPPLIER_EMAILS[2],
+  },
+];
+
+async function seedDemoLandListings() {
+  // Make sure the demo seller accounts exist (with placeholder password hashes).
+  const bcryptModule = await import("bcryptjs");
+  const placeholderHash = await bcryptModule.default.hash(
+    "demo-account-disabled",
+    10,
+  );
+  const sellerNames: Record<string, { name: string; company: string }> = {
+    "ops@northstar-dc.com": {
+      name: "Northstar DC Operations",
+      company: "Northstar Energy Capital",
+    },
+    "land@texasgrid.com": {
+      name: "Texas Grid Land Group",
+      company: "TexasGrid Land Co.",
+    },
+    "deals@cascadepower.com": {
+      name: "Cascade Power Deal Team",
+      company: "Cascade Power Holdings",
+    },
+  };
+  for (const email of DEMO_SUPPLIER_EMAILS) {
+    const profile = sellerNames[email];
+    if (!profile) continue;
+    await prisma.user.upsert({
+      where: { email },
+      update: {},
+      create: {
+        email,
+        passwordHash: placeholderHash,
+        name: profile.name,
+        company: profile.company,
+        role: "supplier",
+        // Pre-mark as having signed v2 MNDA so the demo listings can be
+        // posted/approved without going through the gate.
+        mndaSignedAt: new Date(),
+        mndaSignedVersion: "v2",
+      },
+    });
+  }
+
+  // Map demo email → owner id for FK lookups.
+  const owners = await prisma.user.findMany({
+    where: { email: { in: DEMO_SUPPLIER_EMAILS } },
+    select: { id: true, email: true },
+  });
+  const ownerIdByEmail = Object.fromEntries(owners.map((o) => [o.email, o.id]));
+
+  let createdCount = 0;
+  for (const demo of DEMO_LAND_LISTINGS) {
+    const ownerId = ownerIdByEmail[demo.ownerEmail];
+    if (!ownerId) continue;
+    // Idempotent: skip if a listing with the exact title already exists.
+    const existing = await prisma.poweredLandListing.findFirst({
+      where: { title: demo.title },
+      select: { id: true },
+    });
+    if (existing) continue;
+
+    const { ownerEmail: _ownerEmail, ...listingData } = demo;
+    await prisma.poweredLandListing.create({
+      data: {
+        ...listingData,
+        country: "USA",
+        ownerId,
+        status: "available",
+        // Demo listings ship as approved + public so AI data center buyers
+        // can browse them immediately without admin action.
+        approvalStatus: "approved",
+        approvedAt: new Date(),
+        visibility: "public",
+      },
+    });
+    createdCount++;
+  }
+  if (createdCount > 0) {
+    console.log(`  ✓ Seeded ${createdCount} demo land listings`);
+  }
 }
 
 main()

@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { SearchBar } from "@/components/search-bar";
+import { getCurrentUser } from "@/lib/session";
+import { landListingsVisibleToWhere } from "@/lib/access";
+import { LandFilterBar } from "@/components/land-filter-bar";
 import { Prisma } from "@prisma/client";
 
 interface Props {
@@ -22,10 +25,18 @@ interface Props {
 
 export default async function LandListingsPage({ searchParams }: Props) {
   const f = searchParams;
-  // Only approved listings show up in public browse.
+  const user = await getCurrentUser();
+  // Privacy: every browse query is scoped to listings the current user is
+  // allowed to see. landListingsVisibleToWhere enforces the four-way rule
+  // (owner / admin / public+approved / invited).
+  if (!user) redirect("/auth/signin?next=/listings/land");
+  const access = landListingsVisibleToWhere({
+    id: user.id,
+    email: user.email,
+    isAdmin: user.isAdmin,
+  });
   const where: Prisma.PoweredLandListingWhereInput = {
-    status: "available",
-    approvalStatus: "approved",
+    ...(access as Prisma.PoweredLandListingWhereInput),
   };
   if (f.q) {
     where.OR = [
@@ -59,6 +70,14 @@ export default async function LandListingsPage({ searchParams }: Props) {
     orderBy,
     include: { owner: { select: { name: true, company: true } } },
   });
+  // Tag each listing with how the user has access — drives the badge on
+  // each card ("Yours" / "Shared with you" / Public).
+  const listingsWithAccess = listings.map((l) => {
+    let accessBadge: "yours" | "shared" | "public" = "public";
+    if (l.ownerId === user.id) accessBadge = "yours";
+    else if (l.visibility !== "public") accessBadge = "shared";
+    return { listing: l, accessBadge };
+  });
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10">
@@ -78,62 +97,11 @@ export default async function LandListingsPage({ searchParams }: Props) {
       </div>
 
       <div className="mt-6">
-        <SearchBar
-          basePath="/listings/land"
-          fields={[
-            { name: "q", label: "Keyword / location / county", type: "text", placeholder: "ERCOT, Taylor County, MISO..." },
-            { name: "minMW", label: "Min MW", type: "number", placeholder: "50" },
-            { name: "maxMW", label: "Max MW", type: "number", placeholder: "" },
-            { name: "minAcres", label: "Min acres", type: "number", placeholder: "100" },
-            { name: "state", label: "State", type: "text", placeholder: "TX" },
-            { name: "interconnection", label: "Interconnection", type: "select", options: [
-              { value: "", label: "Any" },
-              { value: "study", label: "Feasibility study" },
-              { value: "facility-study", label: "Facility study" },
-              { value: "LGIA", label: "LGIA executed" },
-              { value: "energized", label: "Energized" },
-            ]},
-            { name: "ppa", label: "PPA", type: "select", options: [
-              { value: "", label: "Any" },
-              { value: "signed", label: "Signed" },
-              { value: "in-negotiation", label: "In negotiation" },
-              { value: "available", label: "Available" },
-              { value: "none", label: "None" },
-            ]},
-            { name: "deal", label: "Deal", type: "select", options: [
-              { value: "", label: "Any" },
-              { value: "sale", label: "Sale" },
-              { value: "lease", label: "Lease" },
-              { value: "JV", label: "Joint venture" },
-            ]},
-            { name: "water", label: "Water", type: "select", options: [
-              { value: "", label: "Any" },
-              { value: "yes", label: "Yes" },
-              { value: "limited", label: "Limited" },
-              { value: "no", label: "No" },
-              { value: "unknown", label: "Unknown" },
-            ]},
-            { name: "fiber", label: "Fiber", type: "select", options: [
-              { value: "", label: "Any" },
-              { value: "yes", label: "On site" },
-              { value: "near", label: "Nearby" },
-              { value: "no", label: "None" },
-            ]},
-            { name: "maxPrice", label: "Max asking ($)", type: "number", placeholder: "20000000" },
-            { name: "sort", label: "Sort", type: "select", options: [
-              { value: "", label: "Newest" },
-              { value: "mw-desc", label: "MW (high to low)" },
-              { value: "mw-asc", label: "MW (low to high)" },
-              { value: "price-asc", label: "Price (low to high)" },
-              { value: "price-desc", label: "Price (high to low)" },
-              { value: "acres-desc", label: "Acres (high to low)" },
-            ]},
-          ]}
-        />
+        <LandFilterBar />
       </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {listings.map((l) => (
+        {listingsWithAccess.map(({ listing: l, accessBadge }) => (
           <Link
             key={l.id}
             href={`/listings/land/${l.id}`}
@@ -141,9 +109,21 @@ export default async function LandListingsPage({ searchParams }: Props) {
           >
             <div className="flex items-start justify-between gap-2">
               <h3 className="font-semibold text-slate-900 group-hover:text-emerald-700 transition leading-snug">{l.title}</h3>
-              <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                {l.pricingModel}
-              </span>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                {accessBadge === "yours" && (
+                  <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white">
+                    Yours
+                  </span>
+                )}
+                {accessBadge === "shared" && (
+                  <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-violet-800">
+                    Shared with you
+                  </span>
+                )}
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                  {l.pricingModel}
+                </span>
+              </div>
             </div>
             <p className="mt-1 text-sm text-slate-500">
               {l.location}{l.county ? ` · ${l.county}` : ""} · {l.acres} acres
