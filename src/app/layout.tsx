@@ -42,9 +42,9 @@ export default async function RootLayout({
       <body>
         <header className="border-b border-[var(--color-rule)] bg-[var(--color-bg)]">
           <div className="mx-auto max-w-7xl px-6 lg:px-10 py-5 flex items-center justify-between gap-8">
-            <Link href="/" className="flex items-center gap-2 leading-none">
-              <LivioLogo height={26} />
-              <span className="text-[22px] font-bold tracking-[-0.02em] text-emerald-700">
+            <Link href="/" className="flex items-center gap-2.5 leading-none">
+              <LivioLogo height={34} />
+              <span className="text-[26px] font-bold tracking-[-0.02em] text-emerald-700">
                 Land
               </span>
             </Link>
