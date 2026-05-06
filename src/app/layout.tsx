@@ -72,9 +72,13 @@ export default async function RootLayout({
                   <Link href="/dashboard" className="hover:text-emerald-700">
                     Dashboard
                   </Link>
+                  {/* Match the Save-changes button at the bottom of forms:
+                      rounded-md, px-6 py-2.5, text-sm, font-medium. Same shape
+                      as the form's primary submit so the header CTA reads as
+                      the same kind of action. */}
                   <Link
                     href="/listings/new/land"
-                    className="bg-emerald-700 px-4 py-2 text-white text-[13px] font-medium hover:bg-emerald-800"
+                    className="rounded-md bg-emerald-700 px-6 py-2.5 text-white text-sm font-medium hover:bg-emerald-800"
                   >
                     + List land
                   </Link>
@@ -112,7 +116,7 @@ export default async function RootLayout({
                   </Link>
                   <Link
                     href="/auth/signup"
-                    className="bg-emerald-700 px-4 py-2 text-white text-[13px] font-medium hover:bg-emerald-800"
+                    className="rounded-md bg-emerald-700 px-4 py-2 text-white text-[13px] font-medium hover:bg-emerald-800"
                   >
                     Get started
                   </Link>
