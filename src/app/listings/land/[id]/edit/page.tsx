@@ -178,20 +178,12 @@ export default async function EditLandListingPage({
                 defaultValue={listing.country}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                name="location"
-                label="City or area"
-                required
-                placeholder="e.g. Madisonville"
-                defaultValue={listing.location}
-              />
-              <FormField
-                name="county"
-                label="County (optional)"
-                defaultValue={listing.county ?? ""}
-              />
-            </div>
+            <FormField
+              name="county"
+              label="County (optional)"
+              placeholder="e.g. Daviess"
+              defaultValue={listing.county ?? ""}
+            />
           </FormSection>
 
           <FormSection title="Land & Power">
