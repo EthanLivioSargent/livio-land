@@ -118,6 +118,41 @@ export async function seedDemoLandListings(): Promise<
       { title: "360 acres · Yakima County, WA · 120 MW · BPA energized", location: "Sunnyside", state: "WA", county: "Yakima", acres: 360, availableMW: 120, utilityProvider: "Bonneville Power Administration", substationDistanceMiles: 0.9, ppaStatus: "signed", ppaPricePerMWh: 35, interconnectionStage: "energized", waterAvailable: "yes", fiberAvailable: "yes", zoning: "Industrial", askingPrice: 14_000_000, pricingModel: "sale", description: "Energized 360-acre site in BPA service territory, signed PPA at $35/MWh. Existing 120 MW interconnection — operator can begin construction immediately. On-site fiber and Yakima Basin water rights included. Available for sale or 30+ year ground lease.", ownerEmail: "deals@cascadepower.com" },
     ];
 
+    // Curated Picsum seeds — each one is a stable, real photograph from
+    // Unsplash via Lorem Picsum's seeded delivery. Three shots per site
+    // (cover, drone, detail) so each listing card has a real photo and the
+    // detail page has a small gallery. The r2Key column stores the public URL
+    // directly; getR2DownloadUrl detects http(s) and passes through.
+    const PHOTO_SEEDS_BY_TITLE: Record<string, string[]> = {};
+    for (const d of demos) {
+      const slug = d.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase().slice(0, 32);
+      PHOTO_SEEDS_BY_TITLE[d.title] = [
+        `https://picsum.photos/seed/${slug}-cover/1600/900`,
+        `https://picsum.photos/seed/${slug}-drone/1600/900`,
+        `https://picsum.photos/seed/${slug}-detail/1600/900`,
+      ];
+    }
+    async function ensureDemoPhotos(listingId: string, title: string) {
+      const existingCount = await prisma.listingPhoto.count({
+        where: { landListingId: listingId },
+      });
+      if (existingCount > 0) return; // don't disturb listings that already have photos
+      const urls = PHOTO_SEEDS_BY_TITLE[title] ?? [];
+      for (let i = 0; i < urls.length; i++) {
+        await prisma.listingPhoto.create({
+          data: {
+            r2Key: urls[i],
+            originalName: `demo-${i + 1}.jpg`,
+            contentType: "image/jpeg",
+            sizeBytes: 0,
+            kind: "photo",
+            sortOrder: i,
+            landListingId: listingId,
+          },
+        });
+      }
+    }
+
     let created = 0;
     for (const d of demos) {
       const ownerId = ownerIdByEmail[d.ownerEmail];
@@ -126,9 +161,14 @@ export async function seedDemoLandListings(): Promise<
         where: { title: d.title },
         select: { id: true },
       });
-      if (existing) continue;
+      if (existing) {
+        // Listing already exists — make sure it has photos so the demo deck
+        // looks right even on re-runs after photo support was added.
+        await ensureDemoPhotos(existing.id, d.title);
+        continue;
+      }
       const { ownerEmail: _ownerEmail, ...listingData } = d;
-      await prisma.poweredLandListing.create({
+      const newListing = await prisma.poweredLandListing.create({
         data: {
           ...listingData,
           country: "USA",
@@ -139,6 +179,7 @@ export async function seedDemoLandListings(): Promise<
           visibility: "public",
         },
       });
+      await ensureDemoPhotos(newListing.id, d.title);
       created++;
     }
     revalidatePath("/listings/land");
