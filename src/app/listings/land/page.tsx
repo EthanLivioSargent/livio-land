@@ -6,6 +6,12 @@ import { landListingsVisibleToWhere } from "@/lib/access";
 import { LandFilterBar } from "@/components/land-filter-bar";
 import { Prisma } from "@prisma/client";
 
+// Listings page hits the DB on every request (per-user access filtering, fresh
+// approvalStatus from admin actions). Without force-dynamic, Next.js route
+// caches the rendered output and the seedDemoLandListings + revalidatePath
+// pair stops being enough to show new rows in browse. Cheap to render anyway.
+export const dynamic = "force-dynamic";
+
 interface Props {
   searchParams: {
     q?: string;
