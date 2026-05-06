@@ -78,7 +78,7 @@ export default async function EditLandListingPage({
       {/* AI-assisted auto-fill — supplier types a free-text description and
           Claude Haiku 4.5 extracts structured fields into the questionnaire
           below. Only blank fields are filled, so iterative refinement works. */}
-      <div className="mt-8">
+      <div className="mt-10">
         <DescribeSite
           listingId={listing.id}
           initialValue={listing.description ?? ""}
@@ -89,7 +89,7 @@ export default async function EditLandListingPage({
           outside the main <ListingForm> because PhotoUpload manages its own
           uploads via a separate server action — uploads happen as files are
           dropped, independent of the "Save changes" submission. */}
-      <div className="mt-6 rounded-lg border border-slate-200 bg-white p-6">
+      <div className="mt-10 rounded-lg border border-slate-200 bg-white p-6">
         <h2 className="text-lg font-semibold text-slate-900">Site photos &amp; documents</h2>
         <p className="mt-1 text-sm text-slate-500">
           Upload photos of the parcel, drone footage stills, topo surveys, water-rights
@@ -106,17 +106,11 @@ export default async function EditLandListingPage({
           render as "🔒 Hidden — message owner" on the public listing page;
           owner, admins, and (future) MNDA-signed off-takers who've already
           messaged still see the real value. */}
-      <div className="mt-6 rounded-lg border border-slate-200 bg-white p-6">
+      <div className="mt-10 rounded-lg border border-slate-200 bg-white p-6">
         <h2 className="text-lg font-semibold text-slate-900">Privacy controls</h2>
         <p className="mt-1 text-sm text-slate-500">
           Click the eye icon next to a field to hide it from public off-takers.
-          Off-takers who message you (under signed MNDA) get full visibility.{" "}
-          <Link
-            href={`/listings/land/${listing.id}?preview=1`}
-            className="font-medium text-brand-600 hover:underline"
-          >
-            Preview as off-taker →
-          </Link>
+          Off-takers who message you (under signed MNDA) get full visibility.
         </p>
         <div className="mt-4 grid gap-2 grid-cols-1 sm:grid-cols-2">
           {PRIVACY_TOGGLEABLE_FIELDS.map((field) => (
@@ -135,37 +129,23 @@ export default async function EditLandListingPage({
         </div>
       </div>
 
-      <div className="mt-6 flex justify-end gap-2">
-        <Link
-          href={`/listings/land/${listing.id}?preview=1`}
-          className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-400"
-        >
-          Preview listing →
-        </Link>
-      </div>
-
-      <div className="mt-4">
+      {/* Main listing form — required fields marked with red *. The Preview
+          and Save actions are at the BOTTOM of this section so the supplier
+          sees them only after filling things in. */}
+      <div className="mt-10">
         <ListingForm action={update} submitLabel="Save changes">
           <FormSection title="Overview">
+            <p className="-mt-2 mb-5 text-sm text-slate-500">
+              Required fields marked with <span className="text-red-500">*</span>. Everything
+              else is optional — fill in what you have. Exact street address is never required.
+            </p>
             <FormField
               name="title"
               label="Listing title"
               required
+              placeholder="e.g. 240-acre powered site, Madisonville KY"
               defaultValue={listing.title}
             />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                name="location"
-                label="Location"
-                required
-                defaultValue={listing.location}
-              />
-              <FormField
-                name="country"
-                label="Country"
-                defaultValue={listing.country}
-              />
-            </div>
             <FormField
               name="description"
               label="Description"
@@ -174,14 +154,43 @@ export default async function EditLandListingPage({
             />
           </FormSection>
 
-          {/* Location is intentionally limited to State + County. Off-takers don't
-              need a street address, ZIP, or lat/long to evaluate a parcel — and
-              not exposing the exact address keeps the supplier in control of
-              when (and to whom) the precise location is shared. */}
-          <FormSection title="Site Location">
+          {/* One consolidated Location section. Off-takers don't need a street
+              address, ZIP, or lat/long to evaluate a parcel — keeping the
+              precise location private lets the supplier choose when (and to
+              whom) it's shared. State is required so listings are
+              filterable; everything else is optional. */}
+          <FormSection title="Location">
+            <p className="-mt-2 mb-5 text-sm text-slate-500">
+              State is required so off-takers can filter by region. Exact street
+              address stays private — never shared on the public listing.
+            </p>
             <div className="grid grid-cols-2 gap-4">
-              <FormField name="state" label="State" defaultValue={listing.state ?? ""} />
-              <FormField name="county" label="County (optional)" defaultValue={listing.county ?? ""} />
+              <FormField
+                name="state"
+                label="State"
+                required
+                placeholder="e.g. Texas"
+                defaultValue={listing.state ?? ""}
+              />
+              <FormField
+                name="country"
+                label="Country"
+                defaultValue={listing.country}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                name="location"
+                label="City or area"
+                required
+                placeholder="e.g. Madisonville"
+                defaultValue={listing.location}
+              />
+              <FormField
+                name="county"
+                label="County (optional)"
+                defaultValue={listing.county ?? ""}
+              />
             </div>
           </FormSection>
 
@@ -328,6 +337,24 @@ export default async function EditLandListingPage({
             </div>
           </FormSection>
         </ListingForm>
+
+        {/* Preview action — placed at the BOTTOM, after the form, so the
+            supplier sees it only after they've filled fields in. The Save
+            button (rendered by <ListingForm>) sits just above this on the
+            right; Preview reads the saved record, so suppliers should Save
+            first, then Preview. */}
+        <div className="mt-6 border-t border-slate-200 pt-6 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-slate-500">
+            Save your changes first, then preview the listing as an off-taker
+            would see it.
+          </p>
+          <Link
+            href={`/listings/land/${listing.id}?preview=1`}
+            className="inline-flex items-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 hover:border-slate-400"
+          >
+            Preview listing →
+          </Link>
+        </div>
       </div>
     </div>
   );
