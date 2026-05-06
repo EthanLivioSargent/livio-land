@@ -70,8 +70,14 @@ export async function deleteFromR2(key: string): Promise<void> {
 /**
  * Generate a presigned URL for a stored object so the browser can fetch it
  * directly from R2 without going through our Next.js server. Default TTL: 1h.
+ *
+ * External-URL escape hatch: if the `key` is already a fully-qualified http(s)
+ * URL, return it as-is. This lets the demo seed (seedDemoLandListings) attach
+ * Unsplash / Picsum photos to listings without uploading anything to R2 — the
+ * ListingPhoto.r2Key column just stores the public URL directly.
  */
 export async function getR2DownloadUrl(key: string, expiresInSeconds = 3600): Promise<string> {
+  if (key.startsWith("https://") || key.startsWith("http://")) return key;
   const client = getR2Client();
   return getSignedUrl(
     client,
