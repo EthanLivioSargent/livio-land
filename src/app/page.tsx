@@ -7,8 +7,6 @@ import { AiSearch } from "@/components/ai-search";
 //
 // Visual style — standardized May 2026 to match grid.golivio.com:
 //   - Centered hero (no left-side eyebrow column).
-//   - Pill chip badges at top: audience pill (filled emerald) + scope pill
-//     (mint outline with bullet).
 //   - Massive bold split-color headline (black + emerald).
 //   - Centered body paragraph, max ~58ch.
 //   - Pill rounded-full CTAs with arrow icons.
@@ -21,22 +19,11 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   return (
     <div>
-      {/* HERO — centered, pill chips, big split title, pill CTA with arrow,
-          and the AI search inline. Matches grid.golivio.com hero pattern. */}
+      {/* HERO — centered, big split title, AI search inline. Matches the
+          /listings/land hero pattern exactly for design consistency. */}
       <section className="border-b border-[var(--color-rule)] bg-gradient-to-b from-white via-emerald-50/30 to-white">
         <div className="mx-auto max-w-5xl px-6 lg:px-10 pt-20 pb-24 text-center">
-          {/* Pill chip row — audience + scope. */}
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3.5 py-1 text-[12px] font-medium text-emerald-900">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
-              For AI DC developers · hyperscalers · AI labs · investors
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-3.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-white">
-              <span aria-hidden>✦</span> MNDA-protected · vetted supply
-            </span>
-          </div>
-
-          <h1 className="mt-7 text-5xl md:text-7xl font-bold tracking-tight leading-[1.02]">
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.02]">
             The fastest way to find your next{" "}
             <span className="text-emerald-700">AI Data Center site.</span>
           </h1>
@@ -70,8 +57,7 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          {/* Tiny grey trust line under CTAs — matches Grid's "Free forever ·
-              No credit card · 4-hour package" pattern. */}
+          {/* Tiny grey trust line under CTAs. */}
           <div className="mt-5 text-[12px] text-neutral-500">
             MNDA-protected · 2% buyer-side success fee · paid only at close
           </div>
@@ -271,4 +257,4 @@ function Item({ children }: { children: React.ReactNode }) {
     </li>
   );
 }
-
+—
