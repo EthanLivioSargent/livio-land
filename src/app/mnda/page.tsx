@@ -9,6 +9,7 @@ import {
   MNDA_DISCLOSING_PARTY,
 } from "@/content/mnda";
 import { MndaSignForm } from "./sign-form";
+import { MndaSuggestForm } from "./suggest-form";
 
 // Force dynamic rendering — gate state depends on user session.
 export const dynamic = "force-dynamic";
@@ -38,10 +39,25 @@ export default async function MndaPage({ searchParams }: Props) {
         documents, and counterparty introductions — this agreement protects everyone.
       </div>
 
-      <h1 className="text-3xl font-bold text-slate-900">{MNDA_TITLE}</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Version {MNDA_VERSION} · Between you and {MNDA_DISCLOSING_PARTY.name}
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">{MNDA_TITLE}</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Version {MNDA_VERSION} · Between you and {MNDA_DISCLOSING_PARTY.name}
+          </p>
+        </div>
+        {/* Download as plain text — counsel typically wants a copy to mark
+            up offline. .txt opens cleanly in Word/Pages/Docs and supports
+            Track Changes there. The route is cached at the CDN since the
+            content only changes when MNDA_VERSION bumps. */}
+        <a
+          href="/api/mnda/download"
+          download
+          className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
+        >
+          ↓ Download MNDA (.txt)
+        </a>
+      </div>
 
       <div className="mt-6 rounded-lg border border-slate-200 bg-white p-6 max-h-[480px] overflow-y-auto text-sm leading-relaxed text-slate-700">
         <p className="whitespace-pre-line">{MNDA_INTRO}</p>
@@ -67,6 +83,11 @@ export default async function MndaPage({ searchParams }: Props) {
         defaultEmail={user.email}
         nextUrl={next}
       />
+
+      {/* Redline / propose-changes path — sits below the sign form so
+          counterparties who don't want to sign as-is have a clear next
+          step that doesn't drop the conversation. */}
+      <MndaSuggestForm />
     </div>
   );
 }
