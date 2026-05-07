@@ -37,12 +37,7 @@ interface Props {
 export default async function LandListingsPage({ searchParams }: Props) {
   const f = searchParams;
   const user = await getCurrentUser();
-  // Privacy: every browse query is scoped to listings the current user is
-  // allowed to see. landListingsVisibleToWhere enforces the four-way rule
-  // (owner / admin / public+approved / invited).
   if (!user) {
-    // Preserve the entire query string when bouncing to sign-in so the
-    // buyer comes back to the same AI query / filters after auth.
     const qs = new URLSearchParams();
     for (const [k, v] of Object.entries(searchParams)) {
       if (typeof v === "string" && v.length > 0) qs.set(k, v);
@@ -51,11 +46,6 @@ export default async function LandListingsPage({ searchParams }: Props) {
     redirect(`/auth/signin?next=${encodeURIComponent(next)}`);
   }
 
-  // AI search: if the buyer typed a natural-language query, parse it once
-  // server-side into the same filter shape the page already understands,
-  // then merge with any explicit filter params (explicit wins). This is the
-  // server-side bridge between the AiSearch component and the existing
-  // filter pipeline.
   let parsedAi: ParsedQuery | null = null;
   if (f.aiq && f.aiq.trim().length >= 4) {
     try {
@@ -65,7 +55,6 @@ export default async function LandListingsPage({ searchParams }: Props) {
     }
   }
 
-  // Effective filter values: explicit URL param > AI-parsed > undefined.
   const eff = {
     state: f.state || parsedAi?.state,
     minMW: f.minMW ? Number(f.minMW) : parsedAi?.minMW,
@@ -107,8 +96,6 @@ export default async function LandListingsPage({ searchParams }: Props) {
   if (eff.fiber) where.fiberAvailable = eff.fiber;
   if (eff.maxPrice != null) where.askingPrice = { lte: eff.maxPrice };
 
-  // Default ordering — newest first. AI search overrides this below with a
-  // relevance-based sort.
   let orderBy: Prisma.PoweredLandListingOrderByWithRelationInput = { createdAt: "desc" };
   if (f.sort === "mw-desc") orderBy = { availableMW: "desc" };
   else if (f.sort === "mw-asc") orderBy = { availableMW: "asc" };
@@ -122,8 +109,6 @@ export default async function LandListingsPage({ searchParams }: Props) {
     include: {
       owner: { select: { name: true, company: true } },
       photos: {
-        // First photo by sortOrder is the cover. We pull only one — the
-        // detail page handles the full gallery.
         orderBy: [{ sortOrder: "asc" }, { uploadedAt: "asc" }],
         take: 1,
         select: { id: true, r2Key: true },
@@ -131,9 +116,6 @@ export default async function LandListingsPage({ searchParams }: Props) {
     },
   });
 
-  // Resolve cover-photo URLs in parallel. getR2DownloadUrl passes through
-  // http(s) URLs (used by the demo seed) and presigns real R2 keys for
-  // user-uploaded photos. If R2 isn't configured (dev), URL keys still work.
   const r2Ready = isR2Configured();
   const coverByListing: Record<string, string | null> = {};
   await Promise.all(
@@ -156,9 +138,6 @@ export default async function LandListingsPage({ searchParams }: Props) {
     }),
   );
 
-  // AI relevance sort — only applied when the buyer arrived via AI search.
-  // Each listing scored 0-100 against the parsed query; higher = better
-  // match. Stable sort, so ties fall back to default order.
   let listingsSorted = listings;
   if (parsedAi) {
     listingsSorted = [...listings].sort((a, b) => {
@@ -168,8 +147,6 @@ export default async function LandListingsPage({ searchParams }: Props) {
     });
   }
 
-  // Tag each listing with how the user has access — drives the badge on
-  // each card ("Yours" / "Shared with you" / Public).
   const listingsWithAccess = listingsSorted.map((l) => {
     let accessBadge: "yours" | "shared" | "public" = "public";
     if (l.ownerId === user.id) accessBadge = "yours";
@@ -180,8 +157,6 @@ export default async function LandListingsPage({ searchParams }: Props) {
 
   const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? null;
 
-  // Map listings prop is the same regardless of view — we always render
-  // the map (it's the centerpiece now).
   const mapListings = listingsWithAccess.map(({ listing: l }) => ({
     id: l.id,
     title: l.title,
@@ -196,9 +171,8 @@ export default async function LandListingsPage({ searchParams }: Props) {
 
   return (
     <div>
-      {/* HERO STRIP — eyebrow + tight value statement. Sits above the
-          search and the split view, edge-to-edge with hairline rules in
-          the Swiss style of the homepage. */}
+      {/* HERO STRIP — eyebrow + title + AI search. Filters and map come
+          AFTER this, full-width across the page. */}
       <section className="border-b border-[var(--color-rule)]">
         <div className="mx-auto max-w-7xl px-6 lg:px-10 pt-12 pb-8 grid grid-cols-12 gap-6">
           <div className="col-span-12 md:col-span-2">
@@ -227,29 +201,45 @@ export default async function LandListingsPage({ searchParams }: Props) {
             {parsedAi && (
               <AiQuerySummary parsed={parsedAi} originalQuery={f.aiq ?? ""} />
             )}
-            <div className="mt-5">
-              <LandFilterBar />
-            </div>
-            <div className="mt-5 flex justify-end">
-              <Link
-                href="/listings/new/land"
-                className="inline-flex items-center gap-1.5 bg-emerald-700 px-4 py-2 text-[13px] font-medium text-white hover:bg-emerald-800 transition"
-              >
-                + List land
-              </Link>
-            </div>
           </div>
         </div>
       </section>
 
-      {/* SPLIT VIEW — listing list left, sticky Google Map right. On
-          mobile the map collapses to top, list runs underneath. The map
-          is wrapped in Mac-style chrome (dot dot dot · URL bar · "Open
-          map" link) inspired by grid.golivio.com's 3D viewer presentation. */}
+      {/* MAP — sits centered, full width of the content column, between
+          the AI search above and the filter bar below. */}
+      <section className="border-b border-[var(--color-rule)] bg-neutral-50/40">
+        <div className="mx-auto max-w-7xl px-6 lg:px-10 py-8">
+          <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+            <div className="h-[520px] w-full">
+              <ListingsMap listings={mapListings} apiKey={mapsKey} layout="split" />
+            </div>
+          </div>
+          <p className="mt-2 text-[11px] text-neutral-500">
+            Pins show approximate state centroid · click for site details · per-listing geocoding next.
+          </p>
+        </div>
+      </section>
+
+      {/* FILTER BAR + RESULTS — full width grid below the map. */}
       <section className="border-b border-[var(--color-rule)]">
         <div className="mx-auto max-w-7xl px-6 lg:px-10 py-10">
+          <LandFilterBar />
+
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+            <div className="text-[11px] uppercase tracking-[0.14em] font-semibold text-emerald-700">
+              {listingsWithAccess.length} {listingsWithAccess.length === 1 ? "result" : "results"}
+              {parsedAi ? " · ranked by AI relevance" : " · newest first"}
+            </div>
+            <Link
+              href="/listings/new/land"
+              className="inline-flex items-center gap-1.5 bg-emerald-700 px-4 py-2 text-[13px] font-medium text-white hover:bg-emerald-800 transition"
+            >
+              + List land
+            </Link>
+          </div>
+
           {listings.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center text-slate-500">
+            <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center text-slate-500">
               <div className="text-base font-medium text-slate-700">No listings match your filters.</div>
               <Link
                 href="/listings/land"
@@ -259,39 +249,16 @@ export default async function LandListingsPage({ searchParams }: Props) {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-12 gap-6">
-              {/* Listings column — scrolls within its own height on
-                  desktop so the map stays put while you browse. On
-                  mobile/tablet it just flows. */}
-              <div className="col-span-12 lg:col-span-7">
-                <div className="text-[11px] uppercase tracking-[0.14em] font-semibold text-emerald-700">
-                  {listingsWithAccess.length} {listingsWithAccess.length === 1 ? "result" : "results"}
-                  {parsedAi ? " · ranked by AI relevance" : " · newest first"}
-                </div>
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {listingsWithAccess.map(({ listing: l, accessBadge, score, cover }) => (
-                    <ListingCard
-                      key={l.id}
-                      listing={l}
-                      accessBadge={accessBadge}
-                      score={score}
-                      cover={cover}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Map column — sticky on desktop so it's always visible
-                  while the user scans the list. */}
-              <div className="col-span-12 lg:col-span-5">
-                <div className="lg:sticky lg:top-6">
-                  <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
-                    <div className="h-[640px] w-full">
-                      <ListingsMap listings={mapListings} apiKey={mapsKey} layout="split" />
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {listingsWithAccess.map(({ listing: l, accessBadge, score, cover }) => (
+                <ListingCard
+                  key={l.id}
+                  listing={l}
+                  accessBadge={accessBadge}
+                  score={score}
+                  cover={cover}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -404,12 +371,6 @@ function Spec({ label, value, accent }: { label: string; value: string; accent?:
   );
 }
 
-/**
- * Banner that surfaces what the AI parsed out of a natural-language query.
- * Buyer sees "We read this as: TX · 100+ MW · signed PPA" and can refine
- * if the parse missed something. Renders nothing if no constraints were
- * extracted (rare — usually we get at least one).
- */
 function AiQuerySummary({
   parsed,
   originalQuery,
