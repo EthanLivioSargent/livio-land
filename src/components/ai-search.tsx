@@ -47,14 +47,14 @@ export function AiSearch({
     return (
       <form
         onSubmit={onSubmit}
-        className="flex flex-col gap-2 rounded-xl border border-emerald-200 bg-emerald-50/40 p-3"
+        className="flex flex-col gap-2 rounded-xl border-2 border-emerald-300 bg-emerald-50/60 p-3 shadow-sm"
       >
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] uppercase tracking-[0.14em] font-semibold text-emerald-700">
-            AI search
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-700 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
+            <span aria-hidden>✨</span> AI search
           </span>
-          <span className="text-[11px] text-emerald-800/70">
-            type anything in your own words — AI finds the closest match
+          <span className="text-[12px] font-medium text-emerald-900">
+            Type anything in your own words — AI reads it and shows the best site for you.
           </span>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
@@ -82,12 +82,16 @@ export function AiSearch({
     <form onSubmit={onSubmit} className="mx-auto max-w-3xl">
       <div className="flex flex-col gap-3">
         <div className="text-center">
-          <div className="text-[11px] uppercase tracking-[0.16em] font-semibold text-emerald-700">
-            AI search · type anything
+          <div className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-700 px-4 py-1.5 text-[12px] font-bold uppercase tracking-[0.12em] text-white shadow-sm">
+            <span aria-hidden>✨</span> AI Search
           </div>
-          <p className="mt-1 text-[13px] text-neutral-600">
-            Describe the site you need in your own words — MW, region, PPA status, timing,
-            anything. AI reads the request and ranks every listing by best match.
+          <h2 className="mt-3 text-xl md:text-2xl font-semibold text-[var(--color-text)]">
+            Type anything. AI finds your best site.
+          </h2>
+          <p className="mt-1 text-[13px] text-neutral-600 max-w-xl mx-auto">
+            Describe what you need in your own words — MW, region, PPA status, water,
+            timing, deal type, anything. AI reads your request and ranks every listing
+            by closest match.
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
