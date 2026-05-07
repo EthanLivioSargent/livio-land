@@ -171,21 +171,10 @@ export default async function LandListingsPage({ searchParams }: Props) {
 
   return (
     <div>
-      {/* HERO — centered, pill chips, big split title, AI search inline.
-          Same pattern as the homepage hero. */}
+      {/* HERO — centered, big split title, AI search inline. */}
       <section className="border-b border-[var(--color-rule)] bg-gradient-to-b from-white via-emerald-50/30 to-white">
         <div className="mx-auto max-w-5xl px-6 lg:px-10 pt-16 pb-12 text-center">
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3.5 py-1 text-[12px] font-medium text-emerald-900">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
-              {listings.length} {listings.length === 1 ? "site" : "sites"} ·{" "}
-              {Math.round(listings.reduce((s, l) => s + l.availableMW, 0))} MW total
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-3.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-white">
-              <span aria-hidden>✦</span> MNDA-protected
-            </span>
-          </div>
-          <h1 className="mt-7 text-5xl md:text-6xl font-bold tracking-tight leading-[1.02]">
+          <h1 className="text-5xl md:text-6xl font-bold tracking-tight leading-[1.02]">
             Powered land,{" "}
             <span className="text-emerald-700">on the map.</span>
           </h1>
@@ -422,4 +411,4 @@ function AiQuerySummary({
     </div>
   );
 }
-—
+
