@@ -63,14 +63,14 @@ export function AiSearch({
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="e.g. I need 100 MW in Texas with signed PPA, energized within 12 months"
-            className="flex-1 rounded-md border border-emerald-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="flex-1 rounded-full border border-emerald-200 bg-white px-4 py-2.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
           />
           <button
             type="submit"
             disabled={submitting || !text.trim()}
-            className="rounded-md bg-emerald-700 px-5 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-emerald-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
           >
-            {submitting ? "Searching…" : "Search"}
+            {submitting ? "Searching…" : <>Search <span aria-hidden>→</span></>}
           </button>
         </div>
       </form>
@@ -107,7 +107,7 @@ export function AiSearch({
             disabled={submitting || !text.trim()}
             className="rounded-full bg-emerald-700 px-7 py-3.5 text-[14px] font-medium text-white hover:bg-emerald-800 disabled:opacity-50 inline-flex items-center justify-center gap-2"
           >
-            {submitting ? "Searching…" : "Find my site →"}
+            {submitting ? "Searching…" : <>Find my site <span aria-hidden>→</span></>}
           </button>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2 text-[12px]">
@@ -127,3 +127,4 @@ export function AiSearch({
     </form>
   );
 }
+
